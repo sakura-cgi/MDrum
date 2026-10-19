@@ -1,4 +1,3 @@
-
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -20,61 +19,76 @@ public class StickController : MonoBehaviour
     private float pitch;
 
     private Quaternion initialRotation;
+    private bool mouseControlEnabled = true;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
 
-        // マウス操作で位置・回転を制御する
         rb.isKinematic = true;
         rb.useGravity = false;
 
-        targetPosition = rb.position;
-        targetRotation = rb.rotation;
-        initialRotation = rb.rotation;
-
-        // 角度操作の初期値をリセット
-        yaw = 0f;
-        pitch = 0f;
+        SyncControlToCurrentTransform();
     }
 
     public void ApplyMouseInput(
         Vector2 mouseDelta,
         Vector3 worldMoveInput)
     {
-        // マウス移動量からスティックの角度を計算
+        if (!mouseControlEnabled)
+            return;
+
         yaw += mouseDelta.x * rotationSensitivity;
         pitch -= mouseDelta.y * rotationSensitivity;
-
         pitch = Mathf.Clamp(pitch, -maxPitch, maxPitch);
 
         targetRotation =
             initialRotation *
             Quaternion.Euler(pitch, yaw, 0f);
 
-        // ワールド座標基準で移動
         targetPosition +=
             worldMoveInput * moveSpeed * Time.deltaTime;
     }
 
     private void FixedUpdate()
     {
+        if (!mouseControlEnabled)
+            return;
+
         rb.MovePosition(targetPosition);
         rb.MoveRotation(targetRotation);
     }
 
+    // マウス操作の有効・無効を切り替える
+    public void SetMouseControlEnabled(bool enabled)
+    {
+        mouseControlEnabled = enabled;
+    }
+
+    // 現在のTransformをマウス操作の開始位置にする
+    public void SyncControlToCurrentTransform()
+    {
+        if (rb == null)
+            rb = GetComponent<Rigidbody>();
+
+        targetPosition = transform.position;
+        targetRotation = transform.rotation;
+
+        rb.position = transform.position;
+        rb.rotation = transform.rotation;
+
+        initialRotation = transform.rotation;
+        yaw = 0f;
+        pitch = 0f;
+    }
+
     public void SetSelected(bool selected)
     {
-        // 必要なら選択中のスティックを光らせる等の拡張に使う
+        // 選択中の表示などに使う
     }
 
     public void ResetControl()
     {
-        targetPosition = rb.position;
-        targetRotation = rb.rotation;
-
-        initialRotation = rb.rotation;
-        yaw = 0f;
-        pitch = 0f;
+        SyncControlToCurrentTransform();
     }
 }
